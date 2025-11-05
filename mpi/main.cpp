@@ -130,9 +130,19 @@ double jacobi_sweep(Grid& u_old, Grid& u_new, const Grid& f,
     // Wait for all communications to complete
     MPI_Waitall(4, reqs, stats);
 
-    // boundaries remain zero (Dirichlet)
-    // Loop iterates over all REAL local rows (1 to local_Nx)
-    for (int i = 1; i <= local_Nx; ++i) {
+    // Define loop bounds to *exclude* global boundaries
+    int i_start = 1;
+    int i_end = local_Nx;
+
+    if (rank == 0) {
+        i_start = 2; // Don't compute row 1 (global boundary)
+    }
+    if (rank == num_procs - 1) {
+        i_end = local_Nx - 1; // Don't compute row local_Nx (global boundary)
+    }
+
+    // Loop iterates over all REAL *INTERIOR* local rows
+    for (int i = i_start; i <= i_end; ++i) { // <--- FIXED LOOP BOUNDS
         for (int j = 1; j < Ny - 1; ++j) {
             const double neighbor_sum =
                 (u_old[i-1][j] + u_old[i+1][j]) * invdx2 +
